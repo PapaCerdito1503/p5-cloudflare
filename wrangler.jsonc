@@ -1,5 +1,6 @@
 {
-	"name": "p5",
+	// Ambiente por defecto: Desarrollo (`wrangler deploy`)
+	"name": "p7-dev",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-09-17",
 	"observability": {
@@ -8,9 +9,22 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "p6-db",
+			"database_name": "p7-db-dev",
 			"migrations_dir": "migrations",
 		},
 	],
+	"env": {
+		// Ambiente de Producción (`wrangler deploy --env production`)
+		// Los bindings no se heredan entre ambientes: cada uno declara su propia BD.
+		"production": {
+			"name": "p7-prod",
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "p7-db-prod",
+					"migrations_dir": "migrations",
+				},
+			],
+		},
+	},
 }
-// CI-Trigger

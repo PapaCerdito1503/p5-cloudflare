@@ -7,10 +7,12 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"test": "vitest",
+		"test:coverage": "vitest run --coverage",
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-plugin": "^1.0.0",
+		"@vitest/coverage-istanbul": "~4.1.0",
 		"typescript": "^5.5.2",
 		"vitest": "~4.1.0",
 		"wrangler": "^4"

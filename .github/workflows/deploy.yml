@@ -1,16 +1,20 @@
-name: Project p5
+name: Project p7 - CI/CD
 
 on:
   push:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  test-and-deploy-dev:
+    name: Test & Deploy Dev
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+    environment:
+      name: dev
+      url: ${{ steps.deploy.outputs.deployment-url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,17 +23,74 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Test
-        run: npm run test
+      - name: Unit tests with coverage (Quality Gate)
+        run: npm run test:coverage | tee test-output.txt
 
+      - name: Publish coverage report to summary
+        if: always() && hashFiles('coverage/coverage-summary.json') != ''
+        run: |
+          node scripts/coverage-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo ""
+            echo "<details><summary>Istanbul text report</summary>"
+            echo ""
+            echo '```text'
+            sed -n '/Coverage report from istanbul/,$p' test-output.txt
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Deploy
+      - name: Deploy to dev
+        id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_KEY }}
           accountId: ${{ secrets.ACCOUNT_ID }}
+          command: deploy
 
+      - name: Apply D1 migrations (dev)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_KEY }}
+          accountId: ${{ secrets.ACCOUNT_ID }}
+          command: d1 migrations apply DB --remote
+
+  deploy-prod:
+    name: Deploy Prod
+    needs: test-and-deploy-dev
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to production
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_KEY }}
+          accountId: ${{ secrets.ACCOUNT_ID }}
+          command: deploy --env production
+
+      - name: Apply D1 migrations (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_KEY }}
+          accountId: ${{ secrets.ACCOUNT_ID }}
+          command: d1 migrations apply DB --remote --env production
