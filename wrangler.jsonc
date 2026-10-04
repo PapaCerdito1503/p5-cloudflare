@@ -5,5 +5,12 @@
 	"observability": {
 		"enabled": true,
 	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "p6-db",
+			"migrations_dir": "migrations",
+		},
+	],
 }
 // CI-Trigger
